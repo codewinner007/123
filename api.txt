@@ -1,0 +1,70 @@
+// 获取单个筹款活动详情
+app.get('/api/fundraiser/:id', (req, res) => {
+    const fundraiserId = req.params.id;
+    const query = `
+        SELECT f.FUNDRAISER_ID, f.ORGANIZATION, f.TITLE, f.TARGET_FUNDING, f.CURRENT_FUNDING, f.CITY, f.EVENT_DATE, c.NAME AS CATEGORY_NAME
+        FROM FUNDRAISER f
+        JOIN CATEGORY c ON f.CATEGORY_ID = c.CATEGORY_ID
+        WHERE f.FUNDRAISER_ID = ?`;
+
+    db.query(query, [fundraiserId], (err, results) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        res.json(results[0]);
+    });
+});
+
+
+// 搜索筹款活动
+app.get('/api/search', (req, res) => {
+    const { organizers, cities, categories } = req.query;
+
+    let query = `
+        SELECT f.FUNDRAISER_ID, f.ORGANIZATION, f.TITLE, f.TARGET_FUNDING, f.CURRENT_FUNDING, f.CITY, f.EVENT_DATE
+        FROM FUNDRAISER f
+        WHERE 1=1`;
+
+    const queryParams = [];
+
+    // 处理选中的组织者
+    if (organizers && organizers.length > 0) {
+        query += ' AND f.ORGANIZATION IN (?)';
+        queryParams.push(organizers.split(','));
+    }
+
+    // 处理选中的城市
+    if (cities && cities.length > 0) {
+        query += ' AND f.CITY IN (?)';
+        queryParams.push(cities.split(','));
+    }
+
+    // 处理选中的类别
+    if (categories && categories.length > 0) {
+        query += ' AND f.CATEGORY_ID IN (?)';
+        queryParams.push(categories.split(','));
+    }
+
+    db.query(query, queryParams, (err, results) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        res.json(results);
+    });
+});
+
+// 获取所有正在进行的筹款活动
+app.get('/api/fundraisers', (req, res) => {
+    const query = `
+        SELECT f.FUNDRAISER_ID, f.ORGANIZATION, f.TITLE, f.TARGET_FUNDING, f.CURRENT_FUNDING, f.CITY, f.EVENT_DATE, c.NAME AS CATEGORY_NAME
+        FROM FUNDRAISER f
+        JOIN CATEGORY c ON f.CATEGORY_ID = c.CATEGORY_ID
+        WHERE f.CURRENT_FUNDING < f.TARGET_FUNDING`;
+
+    db.query(query, (err, results) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        res.json(results);
+    });
+});
